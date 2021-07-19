@@ -1,0 +1,20 @@
+
+# Formats
+
+## L
+- 0x0: Literal
+- 0x1: Accumulator
+- 0x2: Register
+- 0x3: Memory
+
+# Instructions
+
+## BOPs 0x0X
+
+## MOVs 0x1X
+
+- MOV: 0x10LL
+
+## MATH 0x2X
+
+- ADD: 0x20LL
