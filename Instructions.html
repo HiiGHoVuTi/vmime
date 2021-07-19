@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+	"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<title>Instructions.html</title>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+
+</head>
+
+<body>
+
+<h1>Formats</h1>
+
+<h2>R</h2>
+
+<p>Register name</p>
+
+<h2>L</h2>
+
+<ul>
+<li>0x0: Literal</li>
+<li>0x1: Accumulator</li>
+<li>0x2: Register</li>
+<li>0x3: Memory</li>
+</ul>
+
+
+<h1>Instructions</h1>
+
+<h2>BOPs 0x0X</h2>
+
+<h2>MOVs 0x1X</h2>
+
+<ul>
+<li>MOV: 0x10LL <64> <64></li>
+<li>MOVRR: 0x11RR</li>
+<li>MOVOR: 0x12LR <64></li>
+<li>MOVRO: 0x13RL <64></li>
+<li>MOVAO: 0x140L <64></li>
+</ul>
+
+
+<h2>MATH 0x2X</h2>
+
+<ul>
+<li>ADD: 0x20LL <64> <64></li>
+<li>ADDRR: 0x21RR x</li>
+<li>SUB: 0x22LL <64> <64></li>
+</ul>
+
+
+<h2>CTRL 0x3X</h2>
+
+<ul>
+<li>IJMP: 0x30VL <64>
+
+<ul>
+<li>IJNQ: 0x301</li>
+</ul>
+</li>
+<li>JNQ: 0x32LL <64> <64></li>
+</ul>
+
+
+</body>
+</html>

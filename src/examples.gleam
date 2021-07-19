@@ -50,7 +50,9 @@ pub fn basic_system(nram: Int, dt: Int) {
       timer
       |> process.send(clock.TimeUpdate(dt: 0))
     },
-    fn() {
+    fn(t: Int) {
+      let #(_sender, receiver) = process.new_channel()
+      let _ = process.receive(receiver, t)
       // completely broken
       timer
       |> process.pid
@@ -60,24 +62,25 @@ pub fn basic_system(nram: Int, dt: Int) {
 }
 
 pub fn test_program() {
-  let #(sys, start, stop) = basic_system(1024, 100)
+  let dt = 100
+  let #(sys, start, stop_after) = basic_system(768, dt)
   sys
   |> process.send(messages.WriteRAMAddress(
     0x0,
     <<
-      0x1003:16, 0xded:64, 0x290:64, // MOVML
-      0x2030:16, 0x290:64, 0x001:64, // ADDML
-      0x1013:16, 0x000:64, 0x290:64, // MOVAM
-      0xffff:16,
+      0x1231:16, 0x0200:64, // MOV #0200 r1
+      0x1202:16, 0x0001:64, // MOV 0x1 r2
+      0x2112:16, // ADD r1 r2
+      0x1403:16, 0x0200:64, // MOV acc #0200
+      0x2210:16, 0x0000:64, 0x0003:64, // SUB acc 0x3
+      0x3010:16, 0x0000:64, // IJNQ #0000 
+      0xffff,
     >>,
   ))
 
   start()
 
-  let #(_sender, receiver) = process.new_channel()
-  let _ = process.receive(receiver, 100 * 10)
-
-  stop()
+  stop_after(40 * dt)
   sys
 }
 
