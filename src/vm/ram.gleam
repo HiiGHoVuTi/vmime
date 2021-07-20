@@ -22,11 +22,11 @@ pub fn handle(msg: messages.RAM, state: State) {
       let new_memory =
         state.memory
         |> memory.put(position, data)
-      io.println(
-        new_memory.data
-        |> imported.bitstring_to_hex_string
-        |> string.append("State:\n", _),
-      )
+      //io.println(
+      //  new_memory.data
+      //  |> imported.bitstring_to_hex_string
+      //  |> string.append("State:\n", _),
+      //)
       actor.Continue(State(memory: new_memory))
     }
     messages.Read(position, length, bus) -> {

@@ -12,6 +12,15 @@
 
 <body>
 
+<p>&ldquo;x&rdquo; means not implemented.</p>
+
+<h1>TODO</h1>
+
+<ul>
+<li>Binary operations</li>
+</ul>
+
+
 <h1>Formats</h1>
 
 <h2>R</h2>
@@ -25,6 +34,7 @@
 <li>0x1: Accumulator</li>
 <li>0x2: Register</li>
 <li>0x3: Memory</li>
+<li>0x4: Address in register</li>
 </ul>
 
 
@@ -40,6 +50,23 @@
 <li>MOVOR: 0x12LR <64></li>
 <li>MOVRO: 0x13RL <64></li>
 <li>MOVAO: 0x140L <64></li>
+<li><p>MOVAR: 0x150R</p></li>
+<li><p>GTH: 0x16RR</p></li>
+<li><p>PSH: 0x18VV</p>
+
+<ul>
+<li>PSHL: 0x180L <64></li>
+<li>PSHR: 0x181R</li>
+</ul>
+</li>
+<li>POP: 0x19VV x
+
+<ul>
+<li>POPL: 0x190L <64> x</li>
+<li>POPR: 0x191R x</li>
+<li>POPA: 0x1920</li>
+</ul>
+</li>
 </ul>
 
 
@@ -55,13 +82,16 @@
 <h2>CTRL 0x3X</h2>
 
 <ul>
-<li>IJMP: 0x30VL <64>
+<li>CMP: 0x30LL <64> <64> x</li>
+<li>ICMP: 0x310L <64> x</li>
+<li>CMPRR: 0x32RR x</li>
+<li>IJMP: 0x33VL <64>
 
 <ul>
-<li>IJNQ: 0x301</li>
+<li>IJNQ: 0x331L <64></li>
 </ul>
 </li>
-<li>JNQ: 0x32LL <64> <64></li>
+<li>JNQ: 0x35LL <64> <64></li>
 </ul>
 
 

@@ -21,7 +21,9 @@ pub opaque type State {
   )
 }
 
-pub fn initial(system, register_names) {
+// nram is a temporary argument
+pub fn initial(system, register_names, nram) {
+  let stack_pos = nram - 64
   State(
     system,
     registers: memory.new(list.length(register_names) * 64),
@@ -30,6 +32,9 @@ pub fn initial(system, register_names) {
     |> list.index_map(fn(i, e) { #(e, i * 64) })
     |> map.from_list,
   )
+  // manually set the registers
+  |> set_register("fp", <<stack_pos:64>>)
+  |> set_register("sp", <<stack_pos:64>>)
 }
 
 pub fn read_register(state: State, regname: String) -> BitString {
@@ -105,6 +110,10 @@ pub fn read_location(state: State, command: Int, value: Int) -> BitString {
     0x1 -> read_register(state, "acc")
     0x2 -> read_register(state, r_number(value))
     0x3 -> read_ram(state, value, 64)
+    0x4 -> {
+      let <<addr:64>> = read_register(state, r_number(value))
+      read_ram(state, addr, 64)
+    }
   }
 }
 
@@ -156,14 +165,52 @@ pub fn execute(state: State, instruction: BitString) -> State {
         0x3 -> write_ram(istate, to_v, data)
       }
     }
+    // MOVAR - 0x150R
+    0x15 -> {
+      let <<_r:4, r:4>> = variant
+      let data = read_register(state, "acc")
+      set_register(state, r_number(r), data)
+    }
+    // 0x16RR - GTH
+    0x16 -> {
+      let <<a:4, b:4>> = variant
+      let #(istate, data) = read_location(state, 0x4, a)
+      set_register(istate, r_number(b), data)
+    }
+
+    // PSH - 0x18VV
+    0x18 -> {
+      let <<mode:4, t:4>> = variant
+      let #(istate, data) = case mode {
+        0x0 -> {
+          let #(istate, <<l:64>>) = fetch(state, 64)
+          #(istate, read_location(istate, t, l))
+        }
+        0x1 -> #(state, read_register(state, r_number(t)))
+      }
+      let <<addr:64>> = read_register(istate, "sp")
+      let newaddr = addr - 64
+      write_ram(set_register(istate, "sp", <<newaddr:64>>), addr, data)
+    }
+    // POP - 0x19VV
+    0x19 -> {
+      let <<mode:4, _t:4>> = variant
+      let <<stack_addr:64>> = read_register(state, "sp")
+      let newaddr = stack_addr + 64
+      let istate = set_register(state, "sp", <<newaddr:64>>)
+      let data = read_ram(istate, newaddr, 64)
+      case mode {
+        0x2 -> set_register(istate, "acc", data)
+      }
+    }
 
     // ADD - 0x20LL
     0x20 -> {
-      let <<a_t:4, b_t:4>> = variant
-      let #(istate, <<a_l:64, b_l:64>>) = fetch(state, 128)
-      let <<a_v:64>> = read_location(istate, a_t, a_l)
-      let <<b_v:64>> = read_location(istate, b_t, b_l)
-      let res = a_v + b_v
+      let <<at:4, bt:4>> = variant
+      let #(istate, <<al:64, bl:64>>) = fetch(state, 128)
+      let <<av:64>> = read_location(istate, at, al)
+      let <<bv:64>> = read_location(istate, bt, bl)
+      let res = av + bv
       set_register(istate, "acc", <<res:64>>)
     }
     // ADDRR - 0x21RR
@@ -176,16 +223,16 @@ pub fn execute(state: State, instruction: BitString) -> State {
     }
     // SUB - 0x22LL
     0x22 -> {
-      let <<a_t:4, b_t:4>> = variant
-      let #(istate, <<a_l:64, b_l:64>>) = fetch(state, 128)
-      let <<a_v:64>> = read_location(istate, a_t, a_l)
-      let <<b_v:64>> = read_location(istate, b_t, b_l)
-      let res = a_v - b_v
+      let <<at:4, bt:4>> = variant
+      let #(istate, <<al:64, bl:64>>) = fetch(state, 128)
+      let <<av:64>> = read_location(istate, at, al)
+      let <<bv:64>> = read_location(istate, bt, bl)
+      let res = av - bv
       set_register(istate, "acc", <<res:64>>)
     }
 
     // IJMP
-    0x30 -> {
+    0x33 -> {
       let <<mod:4, vt:4>> = variant
       let #(istate, <<vl:64>>) = fetch(state, 64)
       let newaddr = read_location(istate, vt, vl)
@@ -199,7 +246,7 @@ pub fn execute(state: State, instruction: BitString) -> State {
       }
     }
     // JNQ - 0x32LL
-    0x32 -> {
+    0x35 -> {
       let <<vt:4, at:4>> = variant
       let #(istate, <<vl:64, al:64>>) = fetch(state, 128)
       let <<value:64>> = read_location(istate, vt, vl)
@@ -231,7 +278,44 @@ pub fn handle(msg: messages.CPU, state: State) {
   case msg {
     messages.ExecutionStep -> {
       let #(istate, instruction) = fetch(state, 16)
-      actor.Continue(execute(istate, instruction))
+      let fstate = execute(istate, instruction)
+      print_register_data(fstate)
+      actor.Continue(fstate)
     }
   }
+}
+
+pub fn print_register_data(state) {
+  io.println(
+    state.registers.data
+    |> imported.bitstring_to_list
+    |> list.index_map(fn(i, e) { #(i, e) })
+    |> list.chunk(fn(ie) {
+      let #(i, _) = ie
+      i / 8
+    })
+    |> list.index_map(fn(i, iel) {
+      iel
+      |> list.map(fn(ie) {
+        let #(_, e) = ie
+        e
+        |> int.to_base_string(16)
+        |> string.pad_left(to: 2, with: "0")
+      })
+      |> string.join("-")
+      |> string.append(": $", _)
+      |> string.append(
+        string.pad_right(
+          state.register_names
+          |> list.at(i)
+          |> result.unwrap(or: "undefined"),
+          3,
+          " ",
+        ),
+        _,
+      )
+    })
+    |> string.join("\n")
+    |> string.append("\nRegisters:\n", _),
+  )
 }

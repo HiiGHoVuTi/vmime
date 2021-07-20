@@ -25,7 +25,13 @@ pub fn basic_system(nram: Int, dt: Int) {
   assert Ok(cpu) =
     cpu.initial(
       sys,
-      ["ip", "acc", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8"],
+      [
+        "ip", "acc", "sp", "fp", // Special registers
+        "r0", "r1", "r2", //"r3", "r4", "r5", "r6", "r7", // GP registers 
+        //"r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
+        "r3",
+      ],
+      nram,
     )
     |> actor.start(cpu.handle)
   assert Ok(ram) =
@@ -61,9 +67,9 @@ pub fn basic_system(nram: Int, dt: Int) {
   )
 }
 
-pub fn test_program() {
-  let dt = 100
-  let #(sys, start, stop_after) = basic_system(768, dt)
+pub fn first_loop() {
+  let dt = 300
+  let #(sys, start, stop_after) = basic_system(256 * 256, dt)
   sys
   |> process.send(messages.WriteRAMAddress(
     0x0,
@@ -73,8 +79,33 @@ pub fn test_program() {
       0x2112:16, // ADD r1 r2
       0x1403:16, 0x0200:64, // MOV acc #0200
       0x2210:16, 0x0000:64, 0x0003:64, // SUB acc 0x3
-      0x3010:16, 0x0000:64, // IJNQ #0000 
-      0xffff,
+      0x3310:16, 0x0000:64, // IJNQ #0000 
+      0xffff:16,
+    >>,
+  ))
+
+  start()
+
+  stop_after(40 * dt)
+  sys
+}
+
+pub fn test_program() {
+  let dt = 300
+  let #(sys, start, stop_after) = basic_system(256 * 256, dt)
+  sys
+  |> process.send(messages.WriteRAMAddress(
+    0x0,
+    <<
+      0x1200:16, 0x1234:64, // MOV 0x1234 -> r0
+      0x1201:16, 0x5678:64, // MOV 0x5678 -> r1
+      0x1810:16, // PSH r0
+      0x1811:16, // PSH r1
+      0x1920:16, // POPA
+      0x1500:16, // MOV acc -> r0
+      0x1920:16, // POPA
+      0x1501:16, // MOV acc -> r1
+      0xffff:16,
     >>,
   ))
 
