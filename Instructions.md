@@ -62,5 +62,5 @@ Register name
   - IJNQ: 0x331L <64>
 - JNQ: 0x35LL <64> <64>
 
-- CAL: 0x3A0R x
-- RET: 0x3F00 x
+- CAL: 0x3A0R
+- RET: 0x3F00

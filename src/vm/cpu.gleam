@@ -196,7 +196,7 @@ pub fn execute(state: State, instruction: BitString) -> State {
       let newaddr = addr - 64
       let nstate =
         write_ram(set_register(istate, "sp", <<newaddr:64>>), addr, data)
-      State(..nstate, frame_size: state.frame_size + 64)
+      State(..nstate, frame_size: nstate.frame_size + 64)
     }
     // POP - 0x19VV
     0x19 -> {
@@ -208,7 +208,7 @@ pub fn execute(state: State, instruction: BitString) -> State {
       let nstate = case mode {
         0x2 -> set_register(istate, "acc", data)
       }
-      State(..nstate, frame_size: state.frame_size - 64)
+      State(..nstate, frame_size: nstate.frame_size - 64)
     }
 
     // ADD - 0x20LL
@@ -268,17 +268,19 @@ pub fn execute(state: State, instruction: BitString) -> State {
     0x3a -> {
       let <<_r:4, r:4>> = variant
       let <<addr:64>> = read_register(state, "sp")
-      let newaddr = addr - 32 - state.registers_size
+      let newaddr = addr - 64 - state.registers_size
+      let <<frame_size:64>> = <<state.frame_size:64>>
       let istate =
         write_ram(
           state,
           newaddr,
-          <<state.frame_size:32, state.registers.data:bit_string>>,
+          <<frame_size:64, state.registers.data:bit_string>>,
         )
+      let future_addr = newaddr - 64
       let nstate =
         istate
         |> set_register("fp", read_register(istate, "sp"))
-        |> set_register("sp", <<newaddr:64>>)
+        |> set_register("sp", <<future_addr:64>>)
       let <<dest:64>> = read_register(nstate, r_number(r))
       let fstate = set_register(nstate, "ip", <<dest:64>>)
       State(..fstate, frame_size: 0)
@@ -288,13 +290,13 @@ pub fn execute(state: State, instruction: BitString) -> State {
       let <<_a:4, _b:4>> = variant
       let <<addr:64>> = read_register(state, "fp")
       let istate = set_register(state, "sp", <<addr:64>>)
-      let <<frame_size:32, register_data:bit_string>> =
+      let <<frame_size:64, register_data:bit_string>> =
         read_ram(
           istate,
-          addr - state.registers_size - 32,
-          32 + state.registers_size,
+          addr - state.registers_size - 64,
+          state.registers_size + 64,
         )
-      let new_frame = addr + 32 + state.registers_size + frame_size * 64
+      let new_frame = addr + frame_size
       let nstate = State(..istate, registers: Memory(register_data))
       let fstate = set_register(nstate, "fp", <<new_frame:64>>)
       State(..fstate, frame_size: 0)
