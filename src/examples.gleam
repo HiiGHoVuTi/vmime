@@ -96,16 +96,33 @@ pub fn test_program() {
   sys
   |> process.send(messages.WriteRAMAddress(
     0x0,
+    // Main
     <<
-      0x1200:16, 0x1234:64, // MOV 0x1234 -> r0
-      0x1201:16, 0x5678:64, // MOV 0x5678 -> r1
-      0x1810:16, // PSH r0
-      0x1811:16, // PSH r1
+      0x1800:16, 0x3333:64, // PSH
+      0x1800:16, 0x2222:64, // PSH
+      0x1800:16, 0x1111:64, // PSH
+      0x1200:16, 0x1234:64, // MOVOR
+      0x1201:16, 0x4567:64, // MOVOR
+      0x1800:16, 0x8888:64, // PSH
+      0x1203:16, 0x1000:64, // MOVOR
+      0x3a03:16, // CAL
+      0x1800:16, 0x4444:64, // PSH
       0x1920:16, // POPA
-      0x1500:16, // MOV acc -> r0
       0x1920:16, // POPA
-      0x1501:16, // MOV acc -> r1
       0xffff:16,
+    >>,
+  ))
+  |> process.send(messages.WriteRAMAddress(
+    0x1000,
+    // Subroutine
+    <<
+      0x1800:16, 0x5555:64, // PSH
+      0x1800:16, 0x6666:64, // PSH
+      0x1920:16, // POPA
+      0x1500:16, // MOVAR
+      0x1920:16, // POPA
+      0x1500:16, // MOVAR
+      0x3f00:16,
     >>,
   ))
 

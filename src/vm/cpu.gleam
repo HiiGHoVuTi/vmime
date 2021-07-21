@@ -18,6 +18,8 @@ pub opaque type State {
     registers: Memory,
     register_map: Map(String, Int),
     register_names: List(String),
+    registers_size: Int,
+    frame_size: Int,
   )
 }
 
@@ -26,8 +28,10 @@ pub fn initial(system, register_names, nram) {
   let stack_pos = nram - 64
   State(
     system,
+    frame_size: 0,
     registers: memory.new(list.length(register_names) * 64),
     register_names: register_names,
+    registers_size: list.length(register_names) * 64,
     register_map: register_names
     |> list.index_map(fn(i, e) { #(e, i * 64) })
     |> map.from_list,
@@ -174,8 +178,8 @@ pub fn execute(state: State, instruction: BitString) -> State {
     // 0x16RR - GTH
     0x16 -> {
       let <<a:4, b:4>> = variant
-      let #(istate, data) = read_location(state, 0x4, a)
-      set_register(istate, r_number(b), data)
+      let data = read_location(state, 0x4, a)
+      set_register(state, r_number(b), data)
     }
 
     // PSH - 0x18VV
@@ -190,7 +194,9 @@ pub fn execute(state: State, instruction: BitString) -> State {
       }
       let <<addr:64>> = read_register(istate, "sp")
       let newaddr = addr - 64
-      write_ram(set_register(istate, "sp", <<newaddr:64>>), addr, data)
+      let nstate =
+        write_ram(set_register(istate, "sp", <<newaddr:64>>), addr, data)
+      State(..nstate, frame_size: state.frame_size + 64)
     }
     // POP - 0x19VV
     0x19 -> {
@@ -199,9 +205,10 @@ pub fn execute(state: State, instruction: BitString) -> State {
       let newaddr = stack_addr + 64
       let istate = set_register(state, "sp", <<newaddr:64>>)
       let data = read_ram(istate, newaddr, 64)
-      case mode {
+      let nstate = case mode {
         0x2 -> set_register(istate, "acc", data)
       }
+      State(..nstate, frame_size: state.frame_size - 64)
     }
 
     // ADD - 0x20LL
@@ -255,6 +262,42 @@ pub fn execute(state: State, instruction: BitString) -> State {
         True -> state
         False -> set_register(istate, "ip", newaddr)
       }
+    }
+
+    // CAL - 0x3A0R
+    0x3a -> {
+      let <<_r:4, r:4>> = variant
+      let <<addr:64>> = read_register(state, "sp")
+      let newaddr = addr - 32 - state.registers_size
+      let istate =
+        write_ram(
+          state,
+          newaddr,
+          <<state.frame_size:32, state.registers.data:bit_string>>,
+        )
+      let nstate =
+        istate
+        |> set_register("fp", read_register(istate, "sp"))
+        |> set_register("sp", <<newaddr:64>>)
+      let <<dest:64>> = read_register(nstate, r_number(r))
+      let fstate = set_register(nstate, "ip", <<dest:64>>)
+      State(..fstate, frame_size: 0)
+    }
+    // RET - 0x3F00
+    0x3f -> {
+      let <<_a:4, _b:4>> = variant
+      let <<addr:64>> = read_register(state, "fp")
+      let istate = set_register(state, "sp", <<addr:64>>)
+      let <<frame_size:32, register_data:bit_string>> =
+        read_ram(
+          istate,
+          addr - state.registers_size - 32,
+          32 + state.registers_size,
+        )
+      let new_frame = addr + 32 + state.registers_size + frame_size * 64
+      let nstate = State(..istate, registers: Memory(register_data))
+      let fstate = set_register(nstate, "fp", <<new_frame:64>>)
+      State(..fstate, frame_size: 0)
     }
 
     // Invalid

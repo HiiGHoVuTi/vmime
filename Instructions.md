@@ -21,6 +21,12 @@ Register name
 
 ## BOPs 0x0X
 
+- NOP: 0x00 x
+- AND: 0x01RR x
+- OR: 0x02RR x
+- RSH: 0x03RR x
+- LSH: 0x04RR x
+
 ## MOVs 0x1X
 
 - MOV: 0x10LL <64> <64>
@@ -55,3 +61,6 @@ Register name
 - IJMP: 0x33VL <64>
   - IJNQ: 0x331L <64>
 - JNQ: 0x35LL <64> <64>
+
+- CAL: 0x3A0R x
+- RET: 0x3F00 x
