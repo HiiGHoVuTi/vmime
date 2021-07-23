@@ -3,6 +3,7 @@ import vm/ram
 import vm/cpu
 import vm/messages
 import vm/memory
+import vm/console
 import vm/imported
 import clock
 import gleam/otp/actor
@@ -38,8 +39,13 @@ pub fn basic_system(nram: Int, dt: Int) {
     ram.initial(nram)
     |> actor.start(ram.handle)
 
+  assert Ok(cnsl) =
+    console.initial(16, 16)
+    |> actor.start(console.handle)
+
   sys
   |> process.send(messages.AddCPU(cpu))
+  |> process.send(messages.AddRAM(cnsl))
   |> process.send(messages.AddRAM(ram))
 
   let timer = clock.new(dt)
@@ -91,44 +97,31 @@ pub fn first_loop() {
 }
 
 pub fn test_program() {
-  let dt = 300
+  let dt = 100
   let #(sys, start, stop_after) = basic_system(256 * 256, dt)
   sys
   |> process.send(messages.WriteRAMAddress(
     0x0,
     // Main
     <<
-      0x1800:16, 0x3333:64, // PSH
-      0x1800:16, 0x2222:64, // PSH
-      0x1800:16, 0x1111:64, // PSH
-      0x1200:16, 0x1234:64, // MOVOR
-      0x1201:16, 0x4567:64, // MOVOR
-      0x1800:16, 0x8888:64, // PSH
-      0x1203:16, 0x1000:64, // MOVOR
-      0x3a03:16, // CAL
-      0x1800:16, 0x4444:64, // PSH
-      0x1920:16, // POPA
-      0x1920:16, // POPA
+      0x1003:16, 0x0048:64, 0x1:16, 0x00:48, // H
+      0x1003:16, 0x0065:64, 0x1:16, 0x01:48, // e
+      0x1003:16, 0x006c:64, 0x1:16, 0x02:48, // l
+      0x1003:16, 0x006c:64, 0x1:16, 0x03:48, // l
+      0x1003:16, 0x006f:64, 0x1:16, 0x04:48, // o
+      0x1003:16, 0x0020:64, 0x1:16, 0x05:48, // 
+      0x1003:16, 0x0057:64, 0x1:16, 0x06:48, // W
+      0x1003:16, 0x006f:64, 0x1:16, 0x07:48, // o
+      0x1003:16, 0x0072:64, 0x1:16, 0x08:48, // r
+      0x1003:16, 0x006c:64, 0x1:16, 0x09:48, // l
+      0x1003:16, 0x0064:64, 0x1:16, 0x0a:48, // d
       0xffff:16,
-    >>,
-  ))
-  |> process.send(messages.WriteRAMAddress(
-    0x1000,
-    // Subroutine
-    <<
-      0x1800:16, 0x5555:64, // PSH
-      0x1800:16, 0x6666:64, // PSH
-      0x1920:16, // POPA
-      0x1500:16, // MOVAR
-      0x1920:16, // POPA
-      0x1500:16, // MOVAR
-      0x3f00:16,
     >>,
   ))
 
   start()
 
-  stop_after(40 * dt)
+  stop_after(50 * dt)
   sys
 }
 
@@ -155,4 +148,10 @@ pub fn test_memory() {
 pub fn test_binary() {
   let <<a:5>> = <<0:1, 0:1, 0:1, 0:1, 0:1>>
   a
+}
+
+pub fn test_utf() {
+  let bin = <<0x41:64>>
+  assert Ok(str) = bit_string.to_string(bin)
+  io.println(str)
 }

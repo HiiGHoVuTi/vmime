@@ -124,6 +124,64 @@ pub fn read_location(state: State, command: Int, value: Int) -> BitString {
 pub fn execute(state: State, instruction: BitString) -> State {
   let <<instruction:8, variant:bit_string>> = instruction
   case instruction {
+    // NOP - 0x0000
+    0x00 -> state
+
+    // INC - 0x010R
+    0x01 -> {
+      let <<_:4, r:4>> = variant
+      let <<val:64>> = read_register(state, r_number(r))
+      let newval = val + 1
+      set_register(state, r_number(r), <<newval:64>>)
+    }
+    // DEC - 0x020R
+    0x02 -> {
+      let <<_:4, r:4>> = variant
+      let <<val:64>> = read_register(state, r_number(r))
+      let newval = val - 1
+      set_register(state, r_number(r), <<newval:64>>)
+    }
+    // AND - 0x03RR
+    0x03 -> {
+      let <<r1:4, r2:4>> = variant
+      let <<val1:64>> = read_register(state, r_number(r1))
+      let <<val2:64>> = read_register(state, r_number(r2))
+      let newval = imported.and(val1, val2)
+      set_register(state, r_number(r1), <<newval:64>>)
+    }
+    // OR - 0x04RR
+    0x04 -> {
+      let <<r1:4, r2:4>> = variant
+      let <<val1:64>> = read_register(state, r_number(r1))
+      let <<val2:64>> = read_register(state, r_number(r2))
+      let newval = imported.or(val1, val2)
+      set_register(state, r_number(r1), <<newval:64>>)
+    }
+    // XOR - 0x05RR
+    0x05 -> {
+      let <<r1:4, r2:4>> = variant
+      let <<val1:64>> = read_register(state, r_number(r1))
+      let <<val2:64>> = read_register(state, r_number(r2))
+      let newval = imported.xor(val1, val2)
+      set_register(state, r_number(r1), <<newval:64>>)
+    }
+    // RSH - 0x06RR
+    0x06 -> {
+      let <<r1:4, r2:4>> = variant
+      let <<val1:64>> = read_register(state, r_number(r1))
+      let <<val2:64>> = read_register(state, r_number(r2))
+      let newval = imported.shift_right(val1, val2)
+      set_register(state, r_number(r1), <<newval:64>>)
+    }
+    // LSH - 0x07RR
+    0x07 -> {
+      let <<r1:4, r2:4>> = variant
+      let <<val1:64>> = read_register(state, r_number(r1))
+      let <<val2:64>> = read_register(state, r_number(r2))
+      let newval = imported.shift_left(val1, val2)
+      set_register(state, r_number(r1), <<newval:64>>)
+    }
+
     // MOV - 0x10FT
     0x10 -> {
       let <<from_t:4, to_t:4>> = variant
@@ -269,12 +327,11 @@ pub fn execute(state: State, instruction: BitString) -> State {
       let <<_r:4, r:4>> = variant
       let <<addr:64>> = read_register(state, "sp")
       let newaddr = addr - 64 - state.registers_size
-      let <<frame_size:64>> = <<state.frame_size:64>>
       let istate =
         write_ram(
           state,
           newaddr,
-          <<frame_size:64, state.registers.data:bit_string>>,
+          <<state.frame_size:64, state.registers.data:bit_string>>,
         )
       let future_addr = newaddr - 64
       let nstate =
@@ -305,7 +362,7 @@ pub fn execute(state: State, instruction: BitString) -> State {
     // Invalid
     _ -> {
       io.println(
-        "Invalid instruction:\n"
+        "\e[35;0HInvalid instruction:\n"
         |> string.append(
           <<instruction:16>>
           |> imported.bitstring_to_hex_string,
@@ -324,13 +381,13 @@ pub fn handle(msg: messages.CPU, state: State) {
     messages.ExecutionStep -> {
       let #(istate, instruction) = fetch(state, 16)
       let fstate = execute(istate, instruction)
-      print_register_data(fstate)
+      //print_register_data(fstate)
       actor.Continue(fstate)
     }
   }
 }
 
-pub fn print_register_data(state) {
+pub fn print_register_data(state: State) {
   io.println(
     state.registers.data
     |> imported.bitstring_to_list
