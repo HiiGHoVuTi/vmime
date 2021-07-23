@@ -19,10 +19,43 @@ def translate_loc(loc):
 def child_value(x):
     return x[1][0][0]
 
+
+register_binops = {
+    "and": "0x03",
+    "or" : "0x04",
+    "xor": "0x05",
+    "rsh": "0x06",
+    "lsh": "0x07",
+}
+
+
 def write_line(tree):
     if tree.value == "Call":
         instr, *_ = tree.children
-        if child_value(instr).lower() == "mov":
+        instr_name = child_value(instr).lower()
+
+        if instr_name == "nop":
+            return "0x0000"
+
+        if instr_name == "inc":
+            instr, fr = tree.children
+            (fr, fr_type) = eval_loc(fr)
+            assert fr_type == "Register"
+            return f"0x010{fr}"
+
+        if instr_name == "dec":
+            instr, fr = tree.children
+            (fr, fr_type) = eval_loc(fr)
+            assert fr_type == "Register"
+            return f"0x020{fr}"
+
+        if instr_name in register_binops:
+            instr, to, fr = tree.children
+            (to, to_type), (fr, fr_type) = eval_loc(to), eval_loc(fr)
+            assert to_type == fr_type == "Register"
+            return register_binops[instr_name] + fr + to
+
+        if instr_name == "mov":
             instr, to, fr = tree.children
             (to, to_type), (fr, fr_type) = eval_loc(to), eval_loc(fr)
             if fr_type == "Accumulator":
@@ -41,13 +74,13 @@ def write_line(tree):
 
             return f"0x10{translate_loc(fr_type)}{translate_loc(to_type)} 0x{fr} 0x{to}"
 
-        if child_value(instr).lower() == "gth":
+        if instr_name == "gth":
             instr, to, fr = tree.children
             (to, to_type), (fr, fr_type) = eval_loc(to), eval_loc(fr)
             assert to_type == fr_type == "Register"
             return f"0x16{fr}{to}"
 
-        if child_value(instr).lower() == "psh":
+        if instr_name == "psh":
             instr, fr = tree.children
             (fr, fr_type) = eval_loc(fr)
             if fr_type == "Register":
@@ -55,24 +88,25 @@ def write_line(tree):
             else:
                 return f"0x180{translate_loc(fr_type)} 0x{fr}"
 
-        if child_value(instr).lower() == "popa":
+        if instr_name == "pop":
+            instr, fr = tree.children
+            (fr, fr_type) = eval_loc(fr)
+            assert fr_type == "Accumulator"
             return "0x1920"
     return "Invalid"
 
 
 if __name__ == "__main__":
-    from parser import grammar, print_tree
+    from parser import grammar, print_tree, graph_tree
     commands = grammar().parseString(
 """
-MOV r1 !abc
-MOV r2 r1
-MOV r1 acc
-GTH r1 r1
-PSH !12
+MOV r1 !1337
 PSH r1
-POPA
+MOV r1 !ded
+GTH r1 r1
+POP acc
 """
     )
-    print_tree(("Program: ", commands))
+    graph_tree(("Program: ", commands))
     print("\n".join([write_line(cmd) for cmd in commands]))
 

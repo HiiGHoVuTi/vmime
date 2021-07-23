@@ -1,6 +1,7 @@
 
 from pyparsing import *
 
+import pydot
 
 from collections import namedtuple
 
@@ -10,6 +11,22 @@ def print_tree(node, tab="", print_first_branch=True):
     print (tab + (u"┗━ " if print_first_branch else "") + str(node[0]))
     for child in node[1]:
         print_tree(child, tab + "    ")
+
+def graph_tree(node):
+    graph = pydot.Dot("my_graph", graph_type="graph", bgcolor="black")
+    convert_tree(graph, node)
+    graph.write_svg("graph.svg")
+    graph.write_png("graph.png")
+
+def convert_tree(graph, node, prop={'id': 0}):
+    prop['id'] += 1
+    id = prop['id']
+    graph.add_node(pydot.Node(f"{id}", label=node[0], fontcolor="white"))
+    for i, child in enumerate(node[1]):
+        nid = convert_tree(graph, child, prop)
+        graph.add_edge(pydot.Edge(f"{id}", f"{nid}", color="white"))
+    return id
+
 
 def printurn(x):
     print(x)
