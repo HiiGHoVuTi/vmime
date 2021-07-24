@@ -54,21 +54,33 @@ def grammar():
     address.setParseAction(pack("Address"))
     deviceAddress = Literal("@").suppress() + Word(hexnums) + Literal(":").suppress() + Word(hexnums)
     deviceAddress.setParseAction(pack("DeviceAddress"))
+    label = Literal(":").suppress() + Word(alphanums)
+    label.setParseAction(pack("Label"))
 
-    operand = acc | register | literal | deviceAddress | address
+    operand = acc | register | literal | deviceAddress | address | label
 
     instr_call = instr + ZeroOrMore(operand)
     instr_call.setParseAction(minipack("Call"))
 
     stmt = instr_call
 
-    return ZeroOrMore(stmt)
+    labelled_sequence = instr + Literal("{").suppress() + ZeroOrMore(stmt) + Literal("}").suppress()
+    labelled_sequence.setParseAction(minipack("Sequence"))
+
+    top_level = labelled_sequence
+
+    return ZeroOrMore(top_level)
 
 
 if __name__ == "__main__":
     g = grammar()
     print_tree(Node("Code", g.parseString(
 """
-MOV r1 @1:8
-MOV !a @3
+label {
+  MOV r1 r2
+}
+main {
+  MOV r1 r2
+}
+
 """)))
