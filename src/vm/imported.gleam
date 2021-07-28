@@ -4,6 +4,9 @@ import gleam/list
 import gleam/bit_string
 import gleam/float
 
+pub external fn read_binfile(filename: String) -> Result(BitString, Nil) =
+  "file" "read_file"
+
 pub external fn bitstring_copy(subject: BitString, n: Int) -> BitString =
   "binary" "copy"
 

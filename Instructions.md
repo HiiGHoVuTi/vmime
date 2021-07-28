@@ -40,14 +40,16 @@ Register name
 - MOVAR: 0x150R
 
 - GTH: 0x16RR
+- RELP: 0x18VL <64>? <64>
+  - RELP-STK: 0x180L <64>
 
-- PSH: 0x18VV
-  - PSHL: 0x180L <64>
-  - PSHR: 0x181R
-- POP: 0x19VV x
-  - POPL: 0x190L <64> x
-  - POPR: 0x191R x
-  - POPA: 0x1920
+- PSH: 0x1aVV
+  - PSHL: 0x1a0L <64>
+  - PSHR: 0x1a1R
+- POP: 0x1fVV x
+  - POPL: 0x1f0L <64> x
+  - POPR: 0x1f1R x
+  - POPA: 0x1f20
 
 
 ## MATH 0x2X
@@ -65,5 +67,6 @@ Register name
   - IJNQ: 0x331L <64>
 - JNQ: 0x35LL <64> <64>
 
+- JMP: 0x390L
 - CAL: 0x3A0R
-- RET: 0x3F00
+- RET: 0x3F0L <64>

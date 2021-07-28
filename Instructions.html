@@ -64,19 +64,25 @@
 <li>MOVAO: 0x140L <64></li>
 <li><p>MOVAR: 0x150R</p></li>
 <li><p>GTH: 0x16RR</p></li>
-<li><p>PSH: 0x18VV</p>
+<li><p>RELP: 0x18VL <64>? <64></p>
 
 <ul>
-<li>PSHL: 0x180L <64></li>
-<li>PSHR: 0x181R</li>
+<li>RELP-STK: 0x180L <64></li>
 </ul>
 </li>
-<li>POP: 0x19VV x
+<li><p>PSH: 0x1aVV</p>
 
 <ul>
-<li>POPL: 0x190L <64> x</li>
-<li>POPR: 0x191R x</li>
-<li>POPA: 0x1920</li>
+<li>PSHL: 0x1a0L <64></li>
+<li>PSHR: 0x1a1R</li>
+</ul>
+</li>
+<li>POP: 0x1fVV x
+
+<ul>
+<li>POPL: 0x1f0L <64> x</li>
+<li>POPR: 0x1f1R x</li>
+<li>POPA: 0x1f20</li>
 </ul>
 </li>
 </ul>
@@ -104,8 +110,9 @@
 </ul>
 </li>
 <li><p>JNQ: 0x35LL <64> <64></p></li>
-<li><p>CAL: 0x3A0R</p></li>
-<li>RET: 0x3F00</li>
+<li><p>JMP: 0x390L</p></li>
+<li>CAL: 0x3A0R</li>
+<li>RET: 0x3F0L <64></li>
 </ul>
 
 

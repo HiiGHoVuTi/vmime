@@ -16,6 +16,15 @@ pub fn initial(size: Int) -> State {
   State(memory: memory.new(size))
 }
 
+pub fn preloaded_program(size: Int, path: String) -> State {
+  assert Ok(program) = imported.read_binfile(path)
+  io.debug(program)
+  let mem =
+    memory.new(size)
+    |> memory.put(0, program)
+  State(memory: mem)
+}
+
 pub fn handle(msg: messages.RAM, state: State) {
   case msg {
     messages.Write(position, data) -> {

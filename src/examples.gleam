@@ -73,6 +73,59 @@ pub fn basic_system(nram: Int, dt: Int) {
   )
 }
 
+pub fn file_executing_system(nram: Int, fpath: String, dt: Int) {
+  let state = system.initial(cpus: [], rams: [])
+  assert Ok(sys) = actor.start(state, system.handle)
+  assert Ok(cpu) =
+    cpu.initial(
+      sys,
+      [
+        "ip", "acc", "sp", "fp", // Special registers
+        "r0", "r1", "r2", //"r3", "r4", "r5", "r6", "r7", // GP registers 
+        //"r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
+        "r3",
+      ],
+      nram,
+    )
+    |> actor.start(cpu.handle)
+  assert Ok(ram) =
+    ram.preloaded_program(nram, fpath)
+    |> actor.start(ram.handle)
+
+  assert Ok(cnsl) =
+    console.initial(16, 16)
+    |> actor.start(console.handle)
+
+  sys
+  |> process.send(messages.AddCPU(cpu))
+  |> process.send(messages.AddRAM(cnsl))
+  |> process.send(messages.AddRAM(ram))
+
+  let timer = clock.new(dt)
+
+  timer
+  |> process.send(clock.AddNotify(
+    actor: sys
+    |> system.to_timer_sender,
+  ))
+
+  #(
+    sys,
+    fn() {
+      timer
+      |> process.send(clock.TimeUpdate(dt: 0))
+    },
+    fn(t: Int) {
+      let #(_sender, receiver) = process.new_channel()
+      let _ = process.receive(receiver, t)
+      // completely broken
+      timer
+      |> process.pid
+      |> process.send_exit("Stopped by command")
+    },
+  )
+}
+
 pub fn first_loop() {
   let dt = 300
   let #(sys, start, stop_after) = basic_system(256 * 256, dt)
@@ -125,6 +178,18 @@ pub fn test_program() {
   sys
 }
 
+pub fn test_asm_program() {
+  let dt = 100
+  let #(sys, start, stop_after) =
+    file_executing_system(256 * 256, "./asm/example-asm.o", dt)
+
+  start()
+
+  stop_after(50 * dt)
+
+  sys
+}
+
 pub fn test_memory() {
   let mem = memory.new(1024)
   assert Ok(data) =
@@ -143,6 +208,10 @@ pub fn test_memory() {
   //assert <<a:256>> = data
   data
   |> imported.bitstring_to_hex_string
+}
+
+pub fn test_files() {
+  imported.read_binfile("./asm/example-asm.o")
 }
 
 pub fn test_binary() {

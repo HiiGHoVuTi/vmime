@@ -54,7 +54,7 @@ def grammar():
     address.setParseAction(pack("Address"))
     deviceAddress = Literal("@").suppress() + Word(hexnums) + Literal(":").suppress() + Word(hexnums)
     deviceAddress.setParseAction(pack("DeviceAddress"))
-    label = Literal(":").suppress() + Word(alphanums)
+    label = Literal(":").suppress() + Word(alphanums + "_")
     label.setParseAction(pack("Label"))
 
     operand = acc | register | literal | deviceAddress | address | label
@@ -62,14 +62,15 @@ def grammar():
     instr_call = instr + ZeroOrMore(operand)
     instr_call.setParseAction(minipack("Call"))
 
-    stmt = instr_call
+    stmt = Forward()
 
     labelled_sequence = instr + Literal("{").suppress() + ZeroOrMore(stmt) + Literal("}").suppress()
     labelled_sequence.setParseAction(minipack("Sequence"))
 
-    top_level = labelled_sequence
+    # top_level = labelled_sequence
+    stmt << (labelled_sequence | instr_call)
 
-    return ZeroOrMore(top_level)
+    return ZeroOrMore(stmt)
 
 
 if __name__ == "__main__":
