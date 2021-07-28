@@ -252,6 +252,15 @@ pub fn execute(state: State, instruction: BitString) -> State {
       }
     }
 
+    // MOVPTR - 0x19RL
+    0x19 -> {
+      let <<r:4, vt:4>> = variant
+      let #(istate, <<vl:64>>) = fetch(state, 64)
+      let data = read_location(istate, vt, vl)
+      let <<new_address:64>> = read_register(istate, r_number(r))
+      write_ram(istate, new_address, data)
+    }
+
     // PSH - 0x1AVV
     0x1a -> {
       let <<mode:4, t:4>> = variant

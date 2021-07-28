@@ -81,9 +81,9 @@ pub fn file_executing_system(nram: Int, fpath: String, dt: Int) {
       sys,
       [
         "ip", "acc", "sp", "fp", // Special registers
-        "r0", "r1", "r2", //"r3", "r4", "r5", "r6", "r7", // GP registers 
+        "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", // GP registers 
         //"r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
-        "r3",
+        "r8",
       ],
       nram,
     )
@@ -93,7 +93,7 @@ pub fn file_executing_system(nram: Int, fpath: String, dt: Int) {
     |> actor.start(ram.handle)
 
   assert Ok(cnsl) =
-    console.initial(16, 16)
+    console.initial(34, 34)
     |> actor.start(console.handle)
 
   sys
@@ -179,13 +179,13 @@ pub fn test_program() {
 }
 
 pub fn test_asm_program() {
-  let dt = 100
+  let dt = 1
   let #(sys, start, stop_after) =
     file_executing_system(256 * 256, "./asm/example-asm.o", dt)
 
   start()
 
-  stop_after(50 * dt)
+  stop_after(50_000 * dt)
 
   sys
 }

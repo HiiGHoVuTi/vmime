@@ -18,12 +18,12 @@ pub fn initial(w: Int, h: Int) -> State {
 }
 
 pub fn move_to(state: State, address: Int) {
-  let x = address % state.width
+  let x = address % state.width * 2
   let y = address / state.height
   io.print(
     ""
     |> string.append("\e[")
-    |> string.append(int.to_string(y))
+    |> string.append(int.to_string(y + 1))
     |> string.append(";")
     |> string.append(int.to_string(x + 1))
     |> string.append("H"),

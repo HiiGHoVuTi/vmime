@@ -42,6 +42,7 @@ Register name
 - GTH: 0x16RR
 - RELP: 0x18VL <64>? <64>
   - RELP-STK: 0x180L <64>
+- MOVPTR: 0x19RL <64>
 
 - PSH: 0x1aVV
   - PSHL: 0x1a0L <64>

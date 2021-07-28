@@ -54,6 +54,8 @@ register_binops = {
     "xor": "0x05",
     "rsh": "0x06",
     "lsh": "0x07",
+
+    "add": "0x21",
 }
 
 
@@ -134,6 +136,21 @@ def write_line(tree, props):
             assert to_type == fr_type == "Register"
             props["total bits"] += 16
             return f"0x16{fr}{to}:16"
+
+        if instr_name == "ptstk":
+            instr, fr = tree.children
+            (fr, fr_type) = eval_loc(fr, props)
+            props["total bits"] += 16 + 64
+            return f"0x180{translate_loc(fr_type)}:16 0x{fr}:64"
+
+
+        if instr_name == "movptr":
+            instr, fr, to = tree.children
+            (to, to_type), (fr, fr_type) = eval_loc(to, props), eval_loc(fr, props)
+            assert fr_type == "Register"
+            props["total bits"] += 16 + 64
+            return f"0x19{fr}{translate_loc(to_type)}:16 0x{to}:64"
+
 
         if instr_name == "psh":
             instr, fr = tree.children
