@@ -18,7 +18,6 @@ pub fn initial(size: Int) -> State {
 
 pub fn preloaded_program(size: Int, path: String) -> State {
   assert Ok(program) = imported.read_binfile(path)
-  io.debug(program)
   let mem =
     memory.new(size)
     |> memory.put(0, program)
@@ -31,18 +30,13 @@ pub fn handle(msg: messages.RAM, state: State) {
       let new_memory =
         state.memory
         |> memory.put(position, data)
-      //io.println(
-      //  new_memory.data
-      //  |> imported.bitstring_to_hex_string
-      //  |> string.append("State:\n", _),
-      //)
       actor.Continue(State(memory: new_memory))
     }
     messages.Read(position, length, bus) -> {
       let data =
         state.memory
         |> memory.read(position, length)
-        |> result.unwrap(or: imported.bitstring_copy(<<1:8>>, length / 8))
+        |> result.unwrap(or: <<0:size(length)>>)
       process.send(bus, data)
       actor.Continue(state)
     }

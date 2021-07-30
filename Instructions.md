@@ -15,7 +15,7 @@ Register name
 - 0x1: Accumulator
 - 0x2: Register
 - 0x3: Memory
-- 0x4: Address in register
+- 0x4: Address in register x
 
 # Instructions
 
@@ -40,6 +40,7 @@ Register name
 - MOVAR: 0x150R
 
 - GTH: 0x16RR
+- FCH: 0x17RN
 - RELP: 0x18VL <64>? <64>
   - RELP-STK: 0x180L <64>
 - MOVPTR: 0x19RL <64>
@@ -56,8 +57,9 @@ Register name
 ## MATH 0x2X
 
 - ADD: 0x20LL <64> <64>
-- ADDRR: 0x21RR x
+- ADDRR: 0x21RR
 - SUB: 0x22LL <64> <64>
+- SUBRR: 0x23RR
 
 ## CTRL 0x3X
 
@@ -71,3 +73,12 @@ Register name
 - JMP: 0x390L
 - CAL: 0x3A0R
 - RET: 0x3F0L <64>
+
+## VIRT 0xDX
+- SLP: 0xD0NN
+- SLP: 0xD10L <64>
+- WRD: 0xD8NN 
+- MAP: 0xDANN
+- UPT: 0xDBNN 
+- UMAP: 0xDCNN
+

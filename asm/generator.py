@@ -56,6 +56,15 @@ register_binops = {
     "lsh": "0x07",
 
     "add": "0x21",
+    "sub": "0x23",
+}
+
+numbered_16bits = {
+    "slp" : "0xd0",
+    "wrd" : "0xd8",
+    "map" : "0xda",
+    "upt" : "0xdb",
+    "umap": "0xdc",
 }
 
 
@@ -100,7 +109,7 @@ def write_line(tree, props):
             return f"0x020{fr}:16"
 
         if instr_name in register_binops:
-            instr, to, fr = tree.children
+            instr, fr, to = tree.children
             (to, to_type), (fr, fr_type) = eval_loc(to, props), eval_loc(fr, props)
             assert to_type == fr_type == "Register"
             props["total bits"] += 16
@@ -136,6 +145,13 @@ def write_line(tree, props):
             assert to_type == fr_type == "Register"
             props["total bits"] += 16
             return f"0x16{fr}{to}:16"
+
+        if instr_name == "fch":
+            instr, fr, to = tree.children
+            (to, to_type), (fr, fr_type) = eval_loc(to, props), eval_loc(fr, props)
+            assert fr_type == "Register" and to_type == "Literal"
+            props["total bits"] += 16
+            return f"0x17{fr}{to}:16"
 
         if instr_name == "ptstk":
             instr, fr = tree.children
@@ -199,6 +215,18 @@ def write_line(tree, props):
             props["total bits"] += 16 + 64
             return f"0x3F0{translate_loc(fr_type)}:16 0x{fr}:64"
 
+        if instr_name in numbered_16bits:
+            instr, fr = tree.children
+            (fr, fr_type) = eval_loc(fr, props)
+            if fr_type == "Literal":
+                props["total bits"] += 16
+                return f"{numbered_16bits[instr_name]}{fr}:16"
+
+        if instr_name == "slp":
+            instr, fr = tree.children
+            (fr, fr_type) = eval_loc(fr, props)
+            props["total bits"] += 16 + 64
+            return f"0xd10{translate_loc(fr_type)}:16 {fr}:64"
 
         if instr_name == "hlt":
             props["total bits"] += 16
@@ -245,34 +273,15 @@ def full_transpile(source):
         [ Node("Instr", [("Main Program", )])
         , *commands]
     ), props)
-    # print(regex_replace_ld("!E.*!", retval, resolve_unknown_label, props))
+    # print(props["total bits"])
+    # print(instr)
 
     array = create_bytearray(instr, props["total bits"])
     return array
 
 if __name__ == "__main__":
     from parser import grammar, print_tree, graph_tree, Node
-    commands = grammar().parseString(
-"""
-main {
-   MOV r1 !5
-   MOV r2 :print
-   loop {
-      DEC r1
-      PSH r1
-      CAL r2
-      AND r1 r1
-      JNQ acc :loop
-      JMP :end_loop
-   }
-   HLT
-}
-print {
-    POP acc
-    RET acc
-}
-"""
-    )
+    commands = grammar().parseString(open("../BadApple/display.asm", 'r').read())
     props = {"total bits": 0, "labels": {}}
     graph_tree(("Entry", commands))
     print_tree(("Program: ", commands))

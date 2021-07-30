@@ -34,7 +34,7 @@
 <li>0x1: Accumulator</li>
 <li>0x2: Register</li>
 <li>0x3: Memory</li>
-<li>0x4: Address in register</li>
+<li>0x4: Address in register x</li>
 </ul>
 
 
@@ -64,6 +64,7 @@
 <li>MOVAO: 0x140L <64></li>
 <li><p>MOVAR: 0x150R</p></li>
 <li><p>GTH: 0x16RR</p></li>
+<li>FCH: 0x17RN</li>
 <li>RELP: 0x18VL <64>? <64>
 
 <ul>
@@ -93,8 +94,9 @@
 
 <ul>
 <li>ADD: 0x20LL <64> <64></li>
-<li>ADDRR: 0x21RR x</li>
+<li>ADDRR: 0x21RR</li>
 <li>SUB: 0x22LL <64> <64></li>
+<li>SUBRR: 0x23RR</li>
 </ul>
 
 
@@ -114,6 +116,18 @@
 <li><p>JMP: 0x390L</p></li>
 <li>CAL: 0x3A0R</li>
 <li>RET: 0x3F0L <64></li>
+</ul>
+
+
+<h2>VIRT 0xDX</h2>
+
+<ul>
+<li>SLP: 0xD0NN</li>
+<li>SLP: 0xD10L <64></li>
+<li>WRD: 0xD8NN</li>
+<li>MAP: 0xDANN</li>
+<li>UPT: 0xDBNN</li>
+<li>UMAP: 0xDCNN</li>
 </ul>
 
 

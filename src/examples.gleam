@@ -4,6 +4,7 @@ import vm/cpu
 import vm/messages
 import vm/memory
 import vm/console
+import vm/time
 import vm/imported
 import clock
 import gleam/otp/actor
@@ -93,11 +94,16 @@ pub fn file_executing_system(nram: Int, fpath: String, dt: Int) {
     |> actor.start(ram.handle)
 
   assert Ok(cnsl) =
-    console.initial(34, 34)
+    console.initial(40, 40)
     |> actor.start(console.handle)
+
+  assert Ok(timer) =
+    time.initial()
+    |> actor.start(time.handle)
 
   sys
   |> process.send(messages.AddCPU(cpu))
+  |> process.send(messages.AddRAM(timer))
   |> process.send(messages.AddRAM(cnsl))
   |> process.send(messages.AddRAM(ram))
 
@@ -179,14 +185,26 @@ pub fn test_program() {
 }
 
 pub fn test_asm_program() {
-  let dt = 1
+  let dt = 16
   let #(sys, start, stop_after) =
     file_executing_system(256 * 256, "./asm/example-asm.o", dt)
 
   start()
 
-  stop_after(50_000 * dt)
+  stop_after(3 * 60 * dt)
 
+  sys
+}
+
+pub fn bad_apple() {
+  let dt = 100
+  // 10 MB of RAM
+  let #(sys, start, stop_after) =
+    file_executing_system(30 * 1024 * 1024 * 8, "./BadApple/display.o", dt)
+
+  start()
+
+  stop_after(6 * 60 * 10 * dt)
   sys
 }
 
@@ -215,8 +233,8 @@ pub fn test_files() {
 }
 
 pub fn test_binary() {
-  let <<a:5>> = <<0:1, 0:1, 0:1, 0:1, 0:1>>
-  a
+  let a = <<0xffff:32>>
+  bit_string.part(a, 4, -2)
 }
 
 pub fn test_utf() {

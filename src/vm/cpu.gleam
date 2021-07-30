@@ -19,22 +19,31 @@ pub opaque type State {
     register_map: Map(String, Int),
     register_names: List(String),
     registers_size: Int,
+    mapped_memory: Map(Int, Memory),
     frame_size: Int,
+    word_size: Int,
+    on: Bool,
   )
 }
+
+external fn sleep(Int) -> Nil =
+  "timer" "sleep"
 
 // nram is a temporary argument
 pub fn initial(system, register_names, nram) {
   let stack_pos = nram - 64
   State(
     system,
+    on: True,
     frame_size: 0,
+    word_size: 64,
     registers: memory.new(list.length(register_names) * 64),
     register_names: register_names,
     registers_size: list.length(register_names) * 64,
     register_map: register_names
     |> list.index_map(fn(i, e) { #(e, i * 64) })
     |> map.from_list,
+    mapped_memory: map.new(),
   )
   // manually set the registers
   |> set_register("fp", <<stack_pos:64>>)
@@ -69,21 +78,52 @@ pub fn set_register(state: State, regname: String, value: BitString) -> State {
 }
 
 pub fn read_ram(state: State, address: Int, count: Int) -> BitString {
-  let #(sender, receiver) = process.new_channel()
-
-  // fetch (always first ram for now)
-  state.system
-  |> process.send(messages.ReadRAMAddress(address, count, sender))
-
-  // decode
-  process.receive(receiver, 10)
-  |> result.unwrap(or: imported.bitstring_copy(<<0:8>>, count / 8))
+  let <<device:16, addr:48>> = <<address:64>>
+  case state.mapped_memory
+  |> map.get(device) {
+    Ok(mem) -> {
+      let <<mapped_addr:64>> = <<0:16, addr:48>>
+      mem
+      |> memory.read(mapped_addr, count)
+    }
+    _ -> {
+      let #(sender, receiver) = process.new_channel()
+      // fetch
+      state.system
+      |> process.send(messages.ReadRAMAddress(address, count, sender))
+      // decode
+      process.receive(receiver, 10)
+    }
+  }
+  |> result.unwrap(or: <<0:size(count)>>)
 }
 
 pub fn write_ram(state: State, address: Int, value: BitString) -> State {
-  state.system
-  |> process.send(messages.WriteRAMAddress(address, value))
-  state
+  let <<device:16, addr:48>> = <<address:64>>
+  let pad = bit_string.byte_size(value) * 8 - state.word_size
+  let size = state.word_size
+  let <<_:size(pad), value:size(size)>> = value
+  let value = <<value:size(size)>>
+  case state.mapped_memory
+  |> map.get(device) {
+    Ok(mem) -> {
+      let <<mapped_addr:64>> = <<0:16, addr:48>>
+      State(
+        ..state,
+        mapped_memory: state.mapped_memory
+        |> map.insert(
+          device,
+          mem
+          |> memory.put(mapped_addr, value),
+        ),
+      )
+    }
+    _ -> {
+      state.system
+      |> process.send(messages.WriteRAMAddress(address, value))
+      state
+    }
+  }
 }
 
 pub fn fetch(state: State, count: Int) -> #(State, BitString) {
@@ -109,14 +149,27 @@ pub fn r_number(n: Int) -> String {
 }
 
 pub fn read_location(state: State, command: Int, value: Int) -> BitString {
+  let word = state.word_size
   case command {
-    0x0 -> <<value:64>>
-    0x1 -> read_register(state, "acc")
-    0x2 -> read_register(state, r_number(value))
-    0x3 -> read_ram(state, value, 64)
+    0x0 -> <<value:size(word)>>
+    0x1 -> {
+      let val = read_register(state, "acc")
+      let size = state.word_size
+      let pad = 64 - size
+      let <<_:size(pad), v:size(size)>> = val
+      <<v:size(size)>>
+    }
+    0x2 -> {
+      let val = read_register(state, r_number(value))
+      let size = state.word_size
+      let pad = 64 - size
+      let <<_:size(pad), v:size(size)>> = val
+      <<v:size(size)>>
+    }
+    0x3 -> read_ram(state, value, word)
     0x4 -> {
       let <<addr:64>> = read_register(state, r_number(value))
-      read_ram(state, addr, 64)
+      read_ram(state, addr, word)
     }
   }
 }
@@ -238,6 +291,14 @@ pub fn execute(state: State, instruction: BitString) -> State {
       let data = read_location(state, 0x4, a)
       set_register(state, r_number(b), data)
     }
+    // FETCHX - 0x170N
+    0x17 -> {
+      let <<r:4, n:4>> = variant
+      let <<addr:64>> = read_register(state, r_number(r))
+      let <<data:size(n)>> = read_ram(state, addr, n)
+      let pad = 64 - n
+      set_register(state, "acc", <<0:size(pad), data:size(n)>>)
+    }
 
     // RELP - 0x18VL
     0x18 -> {
@@ -316,6 +377,14 @@ pub fn execute(state: State, instruction: BitString) -> State {
       let res = av - bv
       set_register(istate, "acc", <<res:64>>)
     }
+    // SUBRR - 0x23RR
+    0x23 -> {
+      let <<r1:4, r2:4>> = variant
+      let <<a:64>> = read_register(state, r_number(r1))
+      let <<b:64>> = read_register(state, r_number(r2))
+      let res = a - b
+      set_register(state, "acc", <<res:64>>)
+    }
 
     // IJMP
     0x33 -> {
@@ -386,10 +455,69 @@ pub fn execute(state: State, instruction: BitString) -> State {
       let new_frame = addr + frame_size
       let fstate =
         State(..nstate, registers: Memory(register_data))
-        |> set_register("fp", <<new_frame:64>>)
+        |> set_register("sp", <<new_frame:64>>)
         |> set_register("acc", <<acc:64>>)
       State(..fstate, frame_size: 0)
     }
+    // SLPN - 0xD0NN
+    0xd0 -> {
+      let <<t:8>> = variant
+      sleep(t)
+      state
+    }
+    // SLPX - 0xD10L
+    0xd1 -> {
+      let <<_:4, vt:4>> = variant
+      let #(istate, <<vl:64>>) = fetch(state, 64)
+      let <<t:64>> = read_location(istate, vt, vl)
+      sleep(t)
+      istate
+    }
+
+    // WRD - 0xD8NN
+    0xd8 -> {
+      let <<n:8>> = variant
+      State(..state, word_size: n)
+    }
+    // MAP - 0xDANN
+    0xda -> {
+      let <<n:8>> = variant
+      let <<addr:64>> = <<n:16, 0:48>>
+      let data = read_ram(state, addr, -1)
+      let new_mem = memory.new(bit_string.byte_size(data) * 8)
+      State(
+        ..state,
+        mapped_memory: state.mapped_memory
+        |> map.insert(
+          n,
+          new_mem
+          |> memory.put(0, data),
+        ),
+      )
+    }
+    // UPT - 0xDBNN
+    0xdb -> {
+      let <<n:8>> = variant
+      let <<addr:64>> = <<n:16, 0:48>>
+      let data = read_ram(state, addr, -1)
+      state.system
+      |> process.send(messages.WriteRAMAddress(addr, data))
+      state
+    }
+    // UMAP - 0xDCNN
+    0xdc -> {
+      let <<n:8>> = variant
+      let <<addr:64>> = <<n:16, 0:48>>
+      let data = read_ram(state, addr, -1)
+      State(
+        ..state,
+        mapped_memory: state.mapped_memory
+        |> map.delete(n),
+      )
+      |> write_ram(addr, data)
+    }
+
+    0xff -> State(..state, on: False)
 
     // Invalid
     _ -> {
@@ -408,14 +536,36 @@ pub fn execute(state: State, instruction: BitString) -> State {
   }
 }
 
-pub fn handle(msg: messages.CPU, state: State) {
-  case msg {
-    messages.ExecutionStep -> {
+pub fn execute_once(state: State) {
+  case state.on {
+    True -> {
       let #(istate, instruction) = fetch(state, 16)
       let fstate = execute(istate, instruction)
       //print_register_data(fstate)
-      actor.Continue(fstate)
+      fstate
     }
+    False -> state
+  }
+}
+
+pub fn execute_fully(state: State) -> State {
+  case state.on {
+    True -> {
+      let #(istate, instruction) = fetch(state, 16)
+      let fstate = execute(istate, instruction)
+      //print_register_data(fstate)
+      execute_fully(fstate)
+    }
+    False -> state
+  }
+}
+
+pub fn handle(msg: messages.CPU, state: State) {
+  case msg {
+    messages.ExecutionStep ->
+      state
+      |> execute_fully
+      |> actor.Continue
   }
 }
 

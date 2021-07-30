@@ -1,13 +1,14 @@
 import gleam/bit_string
 import gleam/bit_builder
 import vm/imported
+import gleam/io
 
 pub type Memory {
   Memory(data: BitString)
 }
 
 pub fn new(size: Int) -> Memory {
-  Memory(data: imported.bitstring_copy(<<0:8>>, size / 8))
+  Memory(data: <<0:size(size)>>)
 }
 
 pub fn put(memory: Memory, position: Int, data: BitString) -> Memory {
@@ -19,7 +20,6 @@ pub fn put(memory: Memory, position: Int, data: BitString) -> Memory {
       position + bit_string.byte_size(data),
       bit_string.byte_size(memory.data) - position - bit_string.byte_size(data),
     )
-
   Memory(data: <<left:bit_string, data:bit_string, right:bit_string>>)
 }
 
@@ -28,8 +28,12 @@ pub fn read(
   position: Int,
   length: Int,
 ) -> Result(BitString, Nil) {
-  let position = position / 8 % bit_string.byte_size(memory.data)
-  let length = length / 8
+  let len = bit_string.byte_size(memory.data)
+  let position = position / 8 % len
+  let length = case length {
+    -1 -> len
+    _ -> length / 8
+  }
 
   bit_string.part(memory.data, position, length)
 }
